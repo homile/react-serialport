@@ -1,8 +1,7 @@
-import useSerialCommunication from "./hooks/useSerialCommunication";
+import useSerialCommunication from './hooks/useSerialCommunication';
 
 function App() {
-  const { initialize, fetchKioskStatus, readResponse } =
-    useSerialCommunication();
+  const { initialize, fetchKioskStatus, emitBills } = useSerialCommunication();
   return (
     <>
       <div>
@@ -11,6 +10,7 @@ function App() {
       <div>
         <button onClick={initialize}>Open Port</button>
         <button onClick={fetchKioskStatus}>Send Data</button>
+        <button onClick={emitBills}>emit Data</button>
       </div>
     </>
   );
