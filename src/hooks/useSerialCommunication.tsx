@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 
+import { amountType } from '../types';
+
 function useSerialCommunication() {
   const [port, setPort] = useState();
+  const [serial, setSerial] = useState(0x21);
 
   const initialize = async () => {
     try {
@@ -49,17 +52,43 @@ function useSerialCommunication() {
   };
 
   /** 현금 방출 */
-  const emitBills = async () => {
+  const emitBills = async (amount: amountType) => {
+    const won1000 = amount[1000] || 0;
+    const won5000 = amount[5000] || 0;
+    const won10000 = amount[10000] || 0;
+    const won50000 = amount[50000] || 0;
+
     const command = [
-      0x04, 0x30, 0x02, 0x52, 0x23, 0x20, 0x20, 0x20, 0x20, 0x20, 0x21, 0x03,
+      0x04,
+      0x30,
+      0x02,
+      0x52,
+      parseInt((0x20 + won1000).toString(16), 16),
+      parseInt((0x20 + won5000).toString(16), 16),
+      parseInt((0x20 + won10000).toString(16), 16),
+      parseInt((0x20 + won50000).toString(16), 16),
+      0x20,
+      0x20,
+      serial,
+      0x03,
     ];
     const BCC = command.reduce((acc, cur) => acc ^ cur, 0);
-    console.log('test:', new Uint8Array([...command, BCC]));
     const commandBuffer = new Uint8Array([...command, BCC]);
     try {
-      console.log('명령어 전송');
       await sendCommandToSerialPort(commandBuffer);
-      // await readResponse(); // 명령어 전송 후 readResponse 호출
+      setSerial((prev) => (prev === 0x7f ? 0x21 : prev + 1));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  /** 트레일러 클리어  */
+  const clearTallies = async () => {
+    const command = [0x04, 0x30, 0x02, 0x64, 0x64, 0x64, 0x03];
+    const BCC = command.reduce((acc, cur) => acc ^ cur, 0);
+    const commandBuffer = new Uint8Array([...command, BCC]);
+    try {
+      await sendCommandToSerialPort(commandBuffer);
     } catch (err) {
       console.error(err);
     }
@@ -78,16 +107,16 @@ function useSerialCommunication() {
     try {
       while (true) {
         const { value, done } = await reader.read();
-        console.log('Read result:', { value, done });
         if (done) {
-          console.log('Done reading');
           await reader.releaseLock();
           break;
         }
         if (value) {
-          console.log('Received value:', value);
           // 여기서 수신된 값을 처리합니다.
           // value.forEach(processValue);
+          // value.forEach((v: any) => {
+          //   console.log('수신된 값:', v);
+          // });
         }
       }
     } catch (err) {
@@ -108,6 +137,7 @@ function useSerialCommunication() {
     fetchKioskStatus,
     initialize,
     emitBills,
+    clearTallies,
   };
 }
 
